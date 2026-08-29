@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "Pour citer ce dépôt, utilisez les métadonnées ci-dessous."
+title: "options-couvertes : le revenu des calls vendus a un prix, et il se mesure"
+authors:
+  - family-names: "Vaudescal"
+    given-names: "Guillaume"
+repository-code: "https://github.com/Guilou001/16-options-couvertes"
+license: MIT
+date-released: "2026-08-29"
