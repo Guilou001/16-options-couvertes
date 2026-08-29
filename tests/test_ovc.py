@@ -93,3 +93,11 @@ def test_annualized_gap_zero_on_identical_series():
     g = annualized_gap(r, r.copy())
     assert g["ecart_annualise_pb"] == pytest.approx(0.0, abs=1e-9)
     assert g["erreur_reproduction_pb"] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_bs_call_dividend_lowers_the_price():
+    sans = bs_call(100.0, 100.0, 0.03, 0.2, 1.0 / 12.0, q=0.0)
+    avec = bs_call(100.0, 100.0, 0.03, 0.2, 1.0 / 12.0, q=0.019)
+    assert avec < sans
+    # l'ordre de grandeur mesuré par la contre-vérification : ~8 pb de l'indice par mois
+    assert (sans - avec) / 100.0 == pytest.approx(0.0008, abs=0.0004)

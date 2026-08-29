@@ -19,13 +19,15 @@ import pandas as pd
 from scipy.stats import norm
 
 
-def bs_call(s: float, k: float, r: float, sigma: float, t: float) -> float:
-    """Black-Scholes sans dividende : le call vendu porte sur l'indice PRIX (convention déclarée)."""
+def bs_call(s: float, k: float, r: float, sigma: float, t: float, q: float = 0.0) -> float:
+    """Black-Scholes avec rendement en dividendes q : le call vendu porte sur l'indice PRIX,
+    qui croît de r - q sous la mesure risque-neutre (l'omettre surprix le call, mesuré :
+    environ 8 pb de l'indice par mois au rendement moyen de 1,9 %)."""
     if t <= 0 or sigma <= 0:
-        return max(s - k, 0.0)
-    d1 = (np.log(s / k) + (r + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
+        return max(s * np.exp(-q * t) - k, 0.0)
+    d1 = (np.log(s / k) + (r - q + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
     d2 = d1 - sigma * np.sqrt(t)
-    return float(s * norm.cdf(d1) - k * np.exp(-r * t) * norm.cdf(d2))
+    return float(s * np.exp(-q * t) * norm.cdf(d1) - k * np.exp(-r * t) * norm.cdf(d2))
 
 
 def third_fridays(start: pd.Timestamp, end: pd.Timestamp) -> pd.DatetimeIndex:
@@ -65,7 +67,15 @@ def synthetic_buywrite(gspc: pd.Series, sp500tr: pd.Series, vix: pd.Series,
         tau = (u - t).days / 365.0
         r = float(rate_pct.reindex([t], method="ffill").iloc[0] or 0.0) / 100.0
         sigma = float(vix.reindex([t], method="ffill").iloc[0]) / 100.0
-        prime = bs_call(s_t, k, r, sigma, tau)
+        # rendement en dividendes observable ex ante : l'écart TR moins prix des 252 séances passées
+        pos = common.searchsorted(t)
+        if pos >= 252:
+            t0 = common[pos - 252]
+            q = float(sp500tr.loc[t] / sp500tr.loc[t0]) / float(gspc.loc[t] / gspc.loc[t0]) - 1.0
+            q = max(q, 0.0)
+        else:
+            q = 0.0
+        prime = bs_call(s_t, k, r, sigma, tau, q)
         s_u = float(gspc.loc[u])
         reglement = max(s_u - k, 0.0)
         jambe_longue = s_t * float(sp500tr.loc[u] / sp500tr.loc[t])
