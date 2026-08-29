@@ -11,11 +11,12 @@ canadien vedette face à son jumeau sans options. *English summary below.*
    buy-write synthétique (S&P 500 en rendement total, call vendu chaque troisième
    vendredi, prix Black-Scholes avec le VIX comme volatilité et le dividende réalisé des
    252 séances passées) suit l'officiel à 0,981 de corrélation mais le bat de
-   +527 pb/an : le VIX, moyenne de variance sur TOUTES les monnaies, surévalue
+   +523 pb/an : le VIX, moyenne de la variance implicite sur TOUS les prix d'exercice cotés, surévalue
    systématiquement le call à la monnaie que le skew rend moins cher. La donnée libre
    chiffre ce qu'elle ne capte pas, et c'est le résultat. (Mesuré, 292 périodes
-   2002-2026 ; sans le dividende, l'écart montait à +630 : la première version de ce
-   dépôt l'omettait, la contre-vérification l'a chiffré à ~106 pb/an.)
+   2002-2026 ; sans le dividende, l'écart monte à +630 : la première version de ce
+   dépôt l'omettait, et la variante est rejouée dans `results/tables/conventions_sensibilite.csv`,
+   qui la chiffre à +107 pb/an.)
 2. **La prime de risque de variance existe, et elle est grosse.** Sur 438 mois depuis
    1990, la variance implicite (VIX au carré) dépasse la variance ensuite réalisée dans
    84 % des mois (t de Newey-West : 3,3) : le vendeur d'options encaisse une assurance
@@ -23,8 +24,8 @@ canadien vedette face à son jumeau sans options. *English summary below.*
    « revenu ». (Mesuré.)
 3. **ZWB contre ZEB, mêmes banques canadiennes : le jumeau nu gagne.** Depuis 2011,
    ZEB (banques sans options) fait 13,96 %/an contre 11,21 % pour ZWB (mêmes banques,
-   calls vendus), pour un pire creux quasi IDENTIQUE (-39,7 % contre -39,4 %) : la vente
-   de calls a coûté 2,75 points par an et n'a pas protégé quand ça comptait. (Mesuré.)
+   options d'achat vendues), pour un pire creux quasi IDENTIQUE (-39,7 % contre -39,4 %) : la vente
+   des options d'achat a coûté 2,75 points par an et n'a pas protégé quand ça comptait. (Mesuré.)
 
 ## La question
 
@@ -60,19 +61,19 @@ rendement en dividendes réalisé des 252 séances précédentes, observable ex 
 | Mesure (292 périodes d'échéance à échéance, 2002-2026) | Valeur |
 |---|---|
 | Corrélation synthétique / officiel | 0,9813 |
-| Écart annualisé synthétique moins officiel | **+527 pb/an** |
+| Écart annualisé synthétique moins officiel | **+523 pb/an** |
 | Erreur de réplication | 236 pb/an |
 | Rendements annualisés : indice TR / BXM / synthétique | 10,3 % / 6,2 % / 11,5 % |
 | Volatilités : indice TR / BXM / synthétique | 17,7 % / 12,3 % / 12,0 % |
 
 **Lecture guidée.** La forme est la bonne : corrélation 0,981, volatilité quasi égale à
-l'officiel (12,0 contre 12,3). Le niveau ne l'est pas : +527 pb/an. La cause est connue
-et c'est la leçon du volet : le VIX agrège la variance implicite de TOUTES les monnaies,
+l'officiel (12,0 contre 12,3). Le niveau ne l'est pas : +523 pb/an. La cause est connue
+et c'est la leçon du volet : le VIX agrège la variance implicite de TOUS les prix d'exercice,
 où les puts hors de la monnaie, chers à cause du skew, pèsent lourd. Le call légèrement
 hors de la monnaie que le BXM vend se négocie à une volatilité NETTEMENT plus basse, et
 le vendre au prix du VIX encaisse une prime fictive. L'ordre de grandeur se vérifie : le
 véga d'un call d'un mois à la monnaie vaut environ 11 pb de l'indice par point de
-volatilité, donc environ 137 pb/an ; les +527 pb/an équivalent à 3,9 points de
+volatilité, donc environ 137 pb/an ; les +523 pb/an équivalent à 3,8 points de
 volatilité d'écart entre le VIX et la volatilité implicite du call vendu, dans la
 fourchette de 2 à 5 points que la littérature rapporte, conventions de roulement
 comprises. Quiconque backteste des ventes d'options avec le VIX comme volatilité
@@ -109,9 +110,9 @@ C'est exactement le profil de rendement d'un FNB d'options couvertes.
 ![ZWB contre ZEB](results/figures/zwb_zeb.png)
 
 **Comment lire cette figure.** Deux FNB de BMO sur le MÊME panier de banques
-canadiennes : ZEB sans options, ZWB avec calls vendus. Depuis 2011 : 13,96 %/an contre
+canadiennes : ZEB sans options, ZWB avec options d'achat vendues. Depuis 2011 : 13,96 %/an contre
 11,21 %, volatilité 15,8 % contre 14,6 %, pire creux -39,7 % contre -39,4 %. La vente de
-calls a acheté 1,2 point de volatilité en moins au prix de 2,75 points de rendement par
+options d'achat a acheté 1,2 point de volatilité en moins au prix de 2,75 points de rendement par
 an, et n'a presque rien amorti dans la vraie baisse : quand le panier tombe de 39,7 %
 (mesuré, mars 2020), un call vendu n'en absorbe que sa prime. Le « revenu » mensuel est
 réel ; le coût l'est aussi, il est juste moins visible.
@@ -120,7 +121,7 @@ réel ; le coût l'est aussi, il est juste moins visible.
 
 ```bash
 uv sync --locked --all-extras
-uv run pytest        # 8 tests fermés, sans réseau
+uv run pytest        # 12 tests fermés, sans réseau
 uv run ovc fetch     # Cboe + FRED + Yahoo (~2 Mo)
 uv run ovc lab       # trois volets : 5 tables, 3 figures (~1 min)
 ```
@@ -138,7 +139,7 @@ Les tests, tous fermés :
 ## Limites, avec statut
 
 1. **Le synthétique n'est pas une réplication au pb, et c'est le résultat.** L'écart de
-   +527 pb/an mesure ensemble le skew, la convexité du VIX et les conventions de
+   +523 pb/an mesure ensemble le skew, la convexité du VIX et les conventions de
    roulement ; les prix d'options réels qui permettraient de les séparer ne sont pas
    libres. (Mesuré pour le total, déclaré pour la décomposition.)
 2. **Le roulement est à la clôture du vendredi**, pas au SOQ du matin ni au cours moyen
@@ -146,7 +147,7 @@ Les tests, tous fermés :
    236 pb d'erreur. (Déclaré.)
 3. **Le dividende est estimé, pas observé** : le rendement réalisé des 252 séances
    passées sert de q dans Black-Scholes (moyenne : 1,9 %/an) ; la première version du
-   dépôt l'omettait et la contre-vérification a chiffré l'omission à ~106 pb/an,
+   dépôt l'omettait et `conventions_sensibilite.csv` chiffre l'omission à +107 pb/an,
    désormais corrigée dans le modèle. (Mesuré.)
 4. **ZWB et ZEB diffèrent aussi par leurs frais.** Aujourd'hui : 44 pb d'écart de RFG
    (72 contre 28) et 63 pb en comptant les frais d'opérations de ZWB ; mais ZEB
@@ -174,8 +175,8 @@ buy-write index from free data: hold the S&P 500 total return, sell the 1-month 
 at the first strike above the index every third Friday, priced by Black-Scholes with the
 VIX as implied volatility and the trailing-252-day realized dividend yield. Result, 292
 expiry-to-expiry periods 2002-2026: correlation 0.981 with the official index, but
-+527 bp/yr TOO RICH (the first version omitted the dividend; adversarial verification
-measured that omission at ~106 bp/yr, now fixed in the model). That gap IS the finding:
++523 bp/yr TOO RICH (the first version omitted the dividend; the repo now replays that
+variant and measures the omission at +107 bp/yr). That gap IS the finding:
 the VIX averages implied variance across all strikes (skew included), while the
 slightly-OTM call the BXM sells trades at a much lower volatility, about 3.9 vol points
 lower here (via the ~137 bp/yr-per-vol-point vega of a 1-month ATM call): anyone
@@ -187,7 +188,7 @@ the violent exceptions: that premium, not "income", is what covered-call funds h
 (3) The Canadian duel: since 2011, ZEB (bare bank basket) returns 13.96 %/yr vs 11.21 %
 for ZWB (same banks plus written calls), with nearly IDENTICAL worst drawdowns (-39.7 %
 vs -39.4 %): the calls cost 2.75 points a year and protected almost nothing in March
-2020. Free data only (Cboe personal use, never redistributed); 8 closed-form tests.
+2020. Free data only (Cboe personal use, never redistributed); 12 closed-form tests.
 
 ## Licence et citation
 

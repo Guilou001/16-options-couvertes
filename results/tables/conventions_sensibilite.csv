@@ -1,0 +1,4 @@
+variante,ecart_annualise_pb,ecart_vs_reference_pb,correlation,n_periodes
+référence,522.9261,0.0,0.9813,292.0
+sans rendement en dividendes,629.9273,107.0011,0.9812,292.0
+prix d'exercice au niveau ou au-dessus (règle Cboe),522.7279,-0.1982,0.9813,292.0

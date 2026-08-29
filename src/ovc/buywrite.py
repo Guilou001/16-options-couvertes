@@ -5,7 +5,8 @@ vendre chaque troisième vendredi un call SPX d'un mois, au premier prix d'exerc
 AU-DESSUS du niveau de l'indice, tenu jusqu'au règlement. La reconstruction en données
 libres remplace le prix de marché du call par Black-Scholes avec le VIX comme volatilité
 implicite : l'écart cumulé au BXM officiel CHIFFRE ce que cette approximation ignore, en
-tête le skew (le VIX, moyenne de variance sur toutes les monnaies, dépasse la volatilité
+tête le skew (le VIX, moyenne de variance implicite sur TOUS les prix d'exercice cotés,
+dépasse la volatilité
 implicite du call à la monnaie quand le skew est pentu : la prime synthétique est trop
 riche, le synthétique doit battre l'officiel). Conventions déclarées : roulement au cours
 de CLÔTURE du vendredi d'échéance (le règlement officiel est le SOQ du matin), prix
@@ -24,7 +25,9 @@ def bs_call(s: float, k: float, r: float, sigma: float, t: float, q: float = 0.0
     qui croît de r - q sous la mesure risque-neutre (l'omettre surprix le call, mesuré :
     environ 8 pb de l'indice par mois au rendement moyen de 1,9 %)."""
     if t <= 0 or sigma <= 0:
-        return max(s * np.exp(-q * t) - k, 0.0)
+        # à volatilité nulle le call vaut le sous-jacent porté moins le prix d'exercice ACTUALISÉ ;
+        # oublier l'actualisation créait un saut de 4,88 points d'indice en sigma = 0
+        return max(s * np.exp(-q * t) - k * np.exp(-r * t), 0.0)
     d1 = (np.log(s / k) + (r - q + 0.5 * sigma**2) * t) / (sigma * np.sqrt(t))
     d2 = d1 - sigma * np.sqrt(t)
     return float(s * np.exp(-q * t) * norm.cdf(d1) - k * np.exp(-r * t) * norm.cdf(d2))
@@ -47,13 +50,20 @@ def next_strike(s: float, step: float = 5.0) -> float:
 
 
 def synthetic_buywrite(gspc: pd.Series, sp500tr: pd.Series, vix: pd.Series,
-                       rate_pct: pd.Series) -> pd.DataFrame:
+                       rate_pct: pd.Series, *, dividendes: bool = True,
+                       strike_strictement_au_dessus: bool = True) -> pd.DataFrame:
     """Les rendements de période (échéance à échéance) du buy-write synthétique.
 
     À chaque troisième vendredi t : prime = BS(S_t, K, r, VIX_t/100, tau) ; à l'échéance
     suivante u : rendement = [jambe longue en rendement TOTAL - règlement du call +
     prime capitalisée] / S_t - 1, la base étant la jambe longue seule (prime en compte
     espèces, convention déclarée).
+
+    Les deux drapeaux servent à CHIFFRER dans le dépôt les conventions que le README discute,
+    au lieu de citer des nombres qu'aucun fichier ne porte. ``dividendes=False`` remet le
+    rendement en dividendes à zéro (l'omission de la première version) ; ``strike_strictement_
+    au_dessus=False`` retient le premier multiple de 5 au niveau OU au-dessus, la règle officielle
+    de Cboe, au lieu du premier strictement au-dessus.
     """
     common = gspc.dropna().index.intersection(sp500tr.dropna().index)
     fridays = third_fridays(common.min(), common.max())
@@ -63,13 +73,18 @@ def synthetic_buywrite(gspc: pd.Series, sp500tr: pd.Series, vix: pd.Series,
     rows = []
     for t, u in zip(dates[:-1], dates[1:], strict=False):
         s_t = float(gspc.loc[t])
-        k = next_strike(s_t)
+        k = next_strike(s_t) if strike_strictement_au_dessus else float(np.ceil(s_t / 5.0) * 5.0)
         tau = (u - t).days / 365.0
-        r = float(rate_pct.reindex([t], method="ffill").iloc[0] or 0.0) / 100.0
+        # « nan or 0.0 » vaut nan en Python (nan est vrai) : le garde-fou d'origine ne protégeait
+        # de rien et un taux manquant se propageait en prime nan, puis disparaissait au dropna
+        taux = float(rate_pct.reindex([t], method="ffill").iloc[0])
+        r = 0.0 if not np.isfinite(taux) else taux / 100.0
         sigma = float(vix.reindex([t], method="ffill").iloc[0]) / 100.0
         # rendement en dividendes observable ex ante : l'écart TR moins prix des 252 séances passées
         pos = common.searchsorted(t)
-        if pos >= 252:
+        if not dividendes:
+            q = 0.0
+        elif pos >= 252:
             t0 = common[pos - 252]
             q = float(sp500tr.loc[t] / sp500tr.loc[t0]) / float(gspc.loc[t] / gspc.loc[t0]) - 1.0
             q = max(q, 0.0)
@@ -82,6 +97,8 @@ def synthetic_buywrite(gspc: pd.Series, sp500tr: pd.Series, vix: pd.Series,
         r_bw = (jambe_longue - reglement + prime * (1.0 + r * tau)) / s_t - 1.0
         r_indice = float(sp500tr.loc[u] / sp500tr.loc[t]) - 1.0
         rows.append({"debut": t, "fin": u, "strike": k, "vix": sigma * 100,
+                     "rendement_dividendes_pct": q * 100, "taux_1m_pct": r * 100, "tau_annees": tau,
+                     "n_seances_pour_q": int(min(pos, 252)),
                      "prime_pct": prime / s_t * 100, "r_synthetique": r_bw,
                      "r_indice_tr": r_indice, "exerce": reglement > 0})
     return pd.DataFrame(rows).set_index("fin")

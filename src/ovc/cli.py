@@ -46,15 +46,37 @@ def lab(out: Path = Path("results")) -> None:
     figs.mkdir(parents=True, exist_ok=True)
 
     # volet 1 : la reconstruction, sur l'échantillon commun BXM (2002-03-22+)
+    # le moteur reçoit l'HISTORIQUE COMPLET et non la tranche postérieure au premier BXM : le
+    # rendement en dividendes s'estime sur les 252 séances antérieures, et tronquer en amont le
+    # forçait silencieusement à zéro sur les douze premières périodes
     debut = bxm.index[0]
-    syn = bw.synthetic_buywrite(gspc.loc[debut:], tr.loc[debut:], vix, rate)
+    syn = bw.synthetic_buywrite(gspc, tr, vix, rate)
+    syn = syn.loc[syn["debut"] >= debut]
     r_syn = syn["r_synthetique"]
     r_bxm = bw.period_returns(bxm, pd.DatetimeIndex([syn["debut"].iloc[0], *syn.index]))
     r_idx = syn["r_indice_tr"]
     stats = bw.annualized_gap(r_syn, r_bxm)
-    pd.DataFrame([stats]).round(3).to_csv(tables / "reconstruction_bxm.csv", index=False)
+    pd.DataFrame([stats]).round(4).to_csv(tables / "reconstruction_bxm.csv", index=False)
     syn.assign(debut=syn["debut"].astype(str)).round(5).to_csv(tables / "periodes_synthetiques.csv")
-    figures.fig_bxm(r_bxm, r_syn, r_idx, stats["ecart_annualise_pb"], figs / "bxm.png")
+    figures.fig_bxm(r_bxm, r_syn, r_idx, stats["ecart_annualise_pb"],
+                    str(syn["debut"].iloc[0].date()), figs / "bxm.png")
+
+    # ce que coûtent les conventions : chaque variante est REJOUÉE ici, au lieu d'être citée de
+    # mémoire dans le README (l'omission du dividende y valait « environ 106 pb/an », mesurée ici)
+    variantes = [("référence", {}),
+                 ("sans rendement en dividendes", {"dividendes": False}),
+                 ("prix d'exercice au niveau ou au-dessus (règle Cboe)",
+                  {"strike_strictement_au_dessus": False})]
+    lignes = []
+    for nom, kwargs in variantes:
+        v = bw.synthetic_buywrite(gspc, tr, vix, rate, **kwargs)
+        v = v.loc[v["debut"] >= debut]
+        g = bw.annualized_gap(v["r_synthetique"], r_bxm)
+        lignes.append({"variante": nom, "ecart_annualise_pb": g["ecart_annualise_pb"],
+                       "ecart_vs_reference_pb": g["ecart_annualise_pb"] - stats["ecart_annualise_pb"],
+                       "correlation": g["correlation"], "n_periodes": g["n_periodes"]})
+    pd.DataFrame(lignes).round(4).to_csv(tables / "conventions_sensibilite.csv", index=False)
+    typer.echo(pd.DataFrame(lignes).round(2).to_string(index=False))
 
     perf = pd.DataFrame([
         {"serie": "S&P 500 TR", "rendement_annuel_pct": ((1 + r_idx).prod() ** (12 / len(r_idx)) - 1) * 100,

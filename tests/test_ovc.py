@@ -101,3 +101,42 @@ def test_bs_call_dividend_lowers_the_price():
     assert avec < sans
     # l'ordre de grandeur mesuré par la contre-vérification : ~8 pb de l'indice par mois
     assert (sans - avec) / 100.0 == pytest.approx(0.0008, abs=0.0004)
+
+
+def test_bs_call_actualise_le_prix_d_exercice_a_volatilite_nulle():
+    # la branche dégénérée rendait max(S e^{-qt} - K, 0) : elle oubliait l'actualisation de K et
+    # créait un saut de près de 5 points d'indice entre sigma = 0 et sigma = 1e-9
+    assert bs_call(100, 100, 0.05, 0.0, 1.0) == pytest.approx(bs_call(100, 100, 0.05, 1e-9, 1.0),
+                                                              abs=1e-6)
+    assert bs_call(100, 104, 0.05, 0.0, 1.0) == pytest.approx(100 - 104 * np.exp(-0.05), abs=1e-12)
+    assert bs_call(100, 120, 0.05, 0.0, 1.0) == 0.0
+
+
+def test_un_taux_manquant_ne_se_propage_pas_en_nan():
+    # « nan or 0.0 » vaut nan en Python : le repli à zéro ne se déclenchait jamais et la prime,
+    # puis le rendement, sortaient en nan sans un mot
+    idx = pd.bdate_range("2019-01-01", periods=400)
+    gspc = pd.Series(np.linspace(1000.0, 1200.0, 400), index=idx)
+    tr = gspc.copy()
+    vix = pd.Series(20.0, index=idx)
+    rate = pd.Series(np.nan, index=idx)          # aucun taux disponible sur toute la période
+    syn = synthetic_buywrite(gspc, tr, vix, rate)
+    assert len(syn) > 5
+    assert np.isfinite(syn["r_synthetique"]).all()
+    assert (syn["taux_1m_pct"] == 0.0).all()
+
+
+def test_la_variance_realisee_ne_deborde_pas_sur_le_mois_precedent():
+    # une bascule de régime exactement à une fin de mois : la fenêtre doit être celle des 21
+    # séances SUIVANTES, sans emprunter la dernière séance du mois écoulé
+    idx = pd.bdate_range("2020-01-01", periods=200)
+    pas = np.full(200, 0.005)
+    bascule = 42                                  # une fin de mois tombe dans ce voisinage
+    pas[bascule:] = 0.02
+    gspc = pd.Series(100.0 * np.exp(np.cumsum(pas)), index=idx)
+    vix = pd.Series(20.0, index=idx)
+    vrp = variance_premium(vix, gspc)
+    # tout mois entièrement postérieur à la bascule a exactement 21 rendements à 2 %
+    apres = vrp[vrp.index > idx[bascule + 21]]
+    assert len(apres) >= 2
+    assert np.allclose(apres["realisee"], 21 * 0.02**2, atol=1e-12)
