@@ -5,6 +5,8 @@ de risque ». Ce dépôt reconstruit l'indice de référence BXM avec des donné
 mesure la prime de risque de variance qui fait vivre ces produits, et met le produit
 canadien vedette face à son jumeau sans options. *English summary below.*
 
+Le même contenu en PDF : [rapport/rapport.pdf](rapport/rapport.pdf).
+
 ## En bref
 
 1. **Le VIX ne suffit PAS à répliquer le BXM, et l'écart est la mesure du skew.** Un

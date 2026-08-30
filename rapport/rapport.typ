@@ -39,6 +39,8 @@
 
 Le Canada adore les FNB d'options d'achat couvertes, vendus comme « du revenu avec moins de risque ». Ce dépôt reconstruit l'indice de référence BXM avec des données libres, mesure la prime de risque de variance qui fait vivre ces produits, et met le produit canadien vedette face à son jumeau sans options. _English summary below._
 
+Le même contenu en PDF : #link("rapport/rapport.pdf")[rapport/rapport.pdf].
+
 == En bref
 
 + *Le VIX ne suffit PAS à répliquer le BXM, et l'écart est la mesure du skew.* Un buy-write synthétique (S&P 500 en rendement total, call vendu chaque troisième vendredi, prix Black-Scholes avec le VIX comme volatilité et le dividende réalisé des 252 séances passées) suit l'officiel à 0,981 de corrélation mais le bat de +523 pb/an : le VIX, moyenne de la variance implicite sur TOUS les prix d'exercice cotés, surévalue systématiquement le call à la monnaie que le skew rend moins cher. La donnée libre chiffre ce qu'elle ne capte pas, et c'est le résultat. (Mesuré, 292 périodes 2002-2026 ; sans le dividende, l'écart monte à +630 : la première version de ce dépôt l'omettait, et la variante est rejouée dans #raw("results/tables/conventions_sensibilite.csv"), qui la chiffre à +107 pb/an.)
