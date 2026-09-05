@@ -1,4 +1,4 @@
-#set document(title: "La vente d'options d'achat couvertes, démontée : le « revenu » a un prix, et il se mesure", author: "Guillaume Vaudescal")
+#set document(title: "Ce que rapporte réellement la vente d'options d'achat couvertes", author: "Guillaume Vaudescal")
 #set page(
   paper: "a4",
   margin: (x: 2.2cm, y: 2.4cm),
@@ -30,20 +30,26 @@
 
 #align(center)[
   #block(width: 100%)[
-    #text(size: 18pt, weight: "bold")[La vente d'options d'achat couvertes, démontée : le « revenu » a un prix, et il se mesure]
+    #text(size: 18pt, weight: "bold")[Ce que rapporte réellement la vente d'options d'achat couvertes]
     #v(0.6em)
-    #text(size: 10pt, fill: luma(70))[Guillaume Vaudescal · 2026-08-30 · #link("https://github.com/Guilou001/16-options-couvertes")[Guilou001/16-options-couvertes]]
+    #text(size: 10pt, fill: luma(70))[Guillaume Vaudescal · 2026-09-04 · #link("https://github.com/Guilou001/16-options-couvertes")[Guilou001/16-options-couvertes]]
   ]
 ]
 #v(1.2em)
 #line(length: 100%, stroke: 0.6pt + luma(190))
 #v(0.8em)
 
-Le Canada adore les FNB d'options d'achat couvertes, vendus comme « du revenu avec moins de risque ». Ce dépôt reconstruit l'indice de référence BXM avec des données libres, mesure la prime de risque de variance qui fait vivre ces produits, et met le produit canadien vedette face à son jumeau sans options. _English summary below._
+Un fonds d'options d'achat couvertes détient des actions et vend en même temps une partie de leur hausse future. Cette vente produit une prime régulière, souvent présentée comme un revenu. Toutefois, elle limite aussi les gains lorsque le marché monte et ne garantit pas une protection lorsque le marché baisse.
+
+Le présent projet reconstruit l'indice américain BXM avec des données publiques, mesure la différence entre la volatilité annoncée et la volatilité ensuite réalisée, puis compare deux fonds canadiens investis dans les mêmes banques.
+
+*Résultat principal.* La reconstruction du BXM atteint une corrélation de 0,981 avec l'indice officiel, mais elle le dépasse de 5,23 points de pourcentage par an. Cet écart mesure principalement ce que le VIX ne dit pas sur le prix de l'option vendue. Depuis 1990, la variance anticipée dépasse la variance réalisée dans 84 % des mois. Toutefois, entre 2011 et 2026, le fonds bancaire sans options rapporte 13,96 % par an, contre 11,21 % pour le fonds couvert, avec des pertes maximales presque identiques.
+
+Afin d'expliquer ces résultats, nous présenterons d'abord le fonctionnement d'une option d'achat couverte. Dans un deuxième temps, nous reconstruirons l'indice BXM et isolerons les conventions qui créent un écart. Ensuite, nous mesurerons la prime de variance et comparerons les deux fonds canadiens. Enfin, nous présenterons les limites des données, les variantes et les commandes de reproduction.
 
 Le même contenu en PDF : #link("rapport/rapport.pdf")[rapport/rapport.pdf].
 
-== En bref
+== Les résultats en détail
 
 + *Le VIX ne suffit PAS à répliquer le BXM, et l'écart est la mesure du skew.* Un buy-write synthétique (S&P 500 en rendement total, call vendu chaque troisième vendredi, prix Black-Scholes avec le VIX comme volatilité et le dividende réalisé des 252 séances passées) suit l'officiel à 0,981 de corrélation mais le bat de +523 pb/an : le VIX, moyenne de la variance implicite sur TOUS les prix d'exercice cotés, surévalue systématiquement le call à la monnaie que le skew rend moins cher. La donnée libre chiffre ce qu'elle ne capte pas, et c'est le résultat. (Mesuré, 292 périodes 2002-2026 ; sans le dividende, l'écart monte à +630 : la première version de ce dépôt l'omettait, et la variante est rejouée dans #raw("results/tables/conventions_sensibilite.csv"), qui la chiffre à +107 pb/an.)
 + *La prime de risque de variance existe, et elle est grosse.* Sur 438 mois depuis 1990, la variance implicite (VIX au carré) dépasse la variance ensuite réalisée dans 84 % des mois (t de Newey-West : 3,3) : le vendeur d'options encaisse une assurance structurellement surpayée, et c'est le vrai moteur des stratégies couvertes, pas le « revenu ». (Mesuré.)
@@ -138,7 +144,7 @@ le call de l'ordre mesuré (~8 pb de l'indice par mois) ;
 
 prime (identités) ;
 
-- prime de variance nulle quand l'implicite égale la réalisée (forme fermée) ;
+- prime de variance nulle quand l'implicite égale la réalisée (formule exacte) ;
 - t de Newey-West sur moyennes connues ; écart annualisé nul sur séries identiques.
 
 == Limites, avec statut
